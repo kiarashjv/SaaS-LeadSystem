@@ -5,7 +5,7 @@ using SharedModels;
 namespace ServerY.Controllers;
 
 [ApiController]
-[Route("/api/[controller]")]
+[Route("api/[controller]")]
 public class LeadsController : ControllerBase
 {
     private readonly ILeadStorageService _storageService;
@@ -18,7 +18,7 @@ public class LeadsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Lead>> CreateLeadAsync(Lead lead)
+    public async Task<IActionResult> StoreLead([FromBody] Lead lead)
     {
         try
         {
@@ -47,7 +47,6 @@ public class LeadsController : ControllerBase
             return StatusCode(500, "An error occurred while retrieving leads");
         }
     }
-
 
     [HttpGet("{email}")]
     public async Task<IActionResult> GetLeadByEmail(string email)
