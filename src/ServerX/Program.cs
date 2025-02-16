@@ -28,8 +28,15 @@ builder.Services.AddSwaggerGen();
 // Configure HTTP client for ServerA
 builder.Services.AddHttpClient<ILeadEvaluationService, LeadEvaluationService>(client =>
 {
-    // Assuming ServerA runs on port 5007
+    // ServerA
     client.BaseAddress = new Uri("http://localhost:5007");
+});
+
+// Configure HTTP client for ServerY
+builder.Services.AddHttpClient<ICmsService, CmsService>(client =>
+{
+    // ServerY
+    client.BaseAddress = new Uri("http://localhost:5008");
 });
 
 var app = builder.Build();
