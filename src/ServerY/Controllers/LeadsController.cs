@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ServerY.Services;
 using SharedModels;
+using SharedMessaging;
 
 namespace ServerY.Controllers;
 
@@ -10,19 +11,48 @@ public class LeadsController : ControllerBase
 {
     private readonly ILeadStorageService _storageService;
     private readonly ILogger<LeadsController> _logger;
+    private readonly IMessageBroker _messageBroker;
+    private const string STORAGE_QUEUE = "lead-storage-queue";
 
-    public LeadsController(ILeadStorageService storageService, ILogger<LeadsController> logger)
+    public LeadsController(
+        ILeadStorageService storageService,
+        ILogger<LeadsController> logger,
+        IMessageBroker messageBroker)
     {
         _storageService = storageService;
         _logger = logger;
+        _messageBroker = messageBroker;
+
+        // Subscribe to incoming leads
+        _messageBroker.Subscribe<Lead>(STORAGE_QUEUE, HandleLeadStorage);
     }
 
+    private async Task HandleLeadStorage(Lead lead)
+    {
+        try
+        {
+            _logger.LogInformation("Storing qualified lead from queue: {Email}", lead.Email);
+            var storedLead = await _storageService.StoreLead(lead);
+
+            // Publish storage result back to queue
+            _messageBroker.PublishMessage(STORAGE_QUEUE + "-result", storedLead);
+
+            _logger.LogInformation("Lead stored successfully: {Email}", lead.Email);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error storing lead from queue: {Email}", lead.Email);
+            throw;
+        }
+    }
+
+    // Keep HTTP endpoints as fallback
     [HttpPost]
     public async Task<IActionResult> StoreLead([FromBody] Lead lead)
     {
         try
         {
-            _logger.LogInformation("Storing qualified lead: {Email}", lead.Email);
+            _logger.LogInformation("Storing qualified lead via HTTP: {Email}", lead.Email);
             var storedLead = await _storageService.StoreLead(lead);
             return Ok(storedLead);
         }

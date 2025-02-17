@@ -1,6 +1,7 @@
 using Microsoft.OpenApi.Models;
 using Serilog;
 using ServerY.Services;
+using SharedMessaging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +29,10 @@ builder.Services.AddSwaggerGen(c =>
 
 // Register services
 builder.Services.AddSingleton<ILeadStorageService, LeadStorageService>();
+
+// Add RabbitMQ Message Broker
+builder.Services.AddSingleton<IMessageBroker>(sp =>
+    new MessageBroker("localhost", sp.GetRequiredService<ILogger<MessageBroker>>()));
 
 var app = builder.Build();
 
