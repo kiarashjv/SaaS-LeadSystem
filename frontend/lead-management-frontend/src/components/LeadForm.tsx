@@ -13,10 +13,46 @@ const schema = yup
   .object({
     name: yup.string().required("Name is required"),
     email: yup.string().email("Invalid email").required("Email is required"),
-    phone: yup.string().required("Phone is required"),
+    phoneNumber: yup.string().required("Phone is required"),
     companyName: yup.string().required("Company name is required"),
   })
   .required();
+
+// Add these sample data arrays
+const sampleData = {
+  valid: {
+    name: "John Smith",
+    email: "john.smith@company.com",
+    phoneNumber: "+15551234567",
+    companyName: "Tech Solutions Inc",
+  },
+  invalid: [
+    {
+      name: "John", // Invalid: single name
+      email: "john.smith@company.com",
+      phoneNumber: "+15551234567",
+      companyName: "Tech Solutions Inc",
+    },
+    {
+      name: "John Smith",
+      email: "invalid-email", // Invalid: wrong email format
+      phoneNumber: "+15551234567",
+      companyName: "Tech Solutions Inc",
+    },
+    {
+      name: "John Smith",
+      email: "john.smith@company.com",
+      phoneNumber: "123", // Invalid: phone too short
+      companyName: "Tech Solutions Inc",
+    },
+    {
+      name: "John Smith",
+      email: "john.smith@company.com",
+      phoneNumber: "+15551234567",
+      companyName: "AB", // Invalid: company name too short
+    },
+  ],
+};
 
 export function LeadForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -25,9 +61,27 @@ export function LeadForm() {
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<LeadFormData>({
     resolver: yupResolver(schema),
   });
+
+  // Add this function to fill form with sample data
+  const fillSampleData = (valid: boolean = true) => {
+    if (valid) {
+      Object.entries(sampleData.valid).forEach(([field, value]) => {
+        setValue(field as keyof LeadFormData, value);
+      });
+    } else {
+      const randomInvalid =
+        sampleData.invalid[
+          Math.floor(Math.random() * sampleData.invalid.length)
+        ];
+      Object.entries(randomInvalid).forEach(([field, value]) => {
+        setValue(field as keyof LeadFormData, value);
+      });
+    }
+  };
 
   const onSubmit = async (formData: LeadFormData) => {
     setIsLoading(true);
@@ -75,6 +129,24 @@ export function LeadForm() {
           onSubmit={handleSubmit(onSubmit)}
           className="mt-8 space-y-6 bg-white p-8 rounded-xl shadow-xl"
         >
+          {/* Add sample data buttons */}
+          <div className="flex gap-2 mb-4">
+            <button
+              type="button"
+              onClick={() => fillSampleData(true)}
+              className="text-sm text-blue-600 hover:text-blue-800"
+            >
+              Fill Valid Data
+            </button>
+            <button
+              type="button"
+              onClick={() => fillSampleData(false)}
+              className="text-sm text-red-600 hover:text-red-800"
+            >
+              Fill Invalid Data
+            </button>
+          </div>
+
           <div className="space-y-4">
             <div>
               <label
@@ -118,20 +190,20 @@ export function LeadForm() {
 
             <div>
               <label
-                htmlFor="phone"
+                htmlFor="phoneNumber"
                 className="block text-sm font-medium text-gray-700"
               >
                 Phone Number
               </label>
               <input
-                {...register("phone")}
+                {...register("phoneNumber")}
                 type="tel"
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="+1 (555) 000-0000"
               />
-              {errors.phone && (
+              {errors.phoneNumber && (
                 <p className="mt-1 text-sm text-red-600">
-                  {errors.phone.message}
+                  {errors.phoneNumber.message}
                 </p>
               )}
             </div>
