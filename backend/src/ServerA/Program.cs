@@ -40,6 +40,9 @@ builder.Services.AddSingleton<LeadsController>();
 // Add QueueInitializationService last
 builder.Services.AddHostedService<QueueInitializationService>();
 
+// Add evaluation service
+builder.Services.AddSingleton<ILeadEvaluationService, LeadEvaluationService>();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
