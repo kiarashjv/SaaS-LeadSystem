@@ -4,25 +4,39 @@ A microservices-based lead management system for SaaS companies, featuring AI-ba
 
 ## System Architecture
 
-The system consists of three microservices:
+The system consists of three microservices and a React frontend:
 
-1. **ServerX (Main Server)**
+1. **Frontend (React + TypeScript)**
+
+   - Modern, responsive UI built with React
+   - Form validation using Yup
+   - Real-time feedback using react-hot-toast
+   - Framer Motion animations
+   - TypeScript for type safety
+
+2. **ServerX (Main Server)**
 
    - Core orchestration service
    - Handles incoming lead submissions
    - Coordinates between AI evaluation and CMS storage
    - Implements fallback mechanisms and error handling
+   - Message queue result handling
 
-2. **ServerA (AI Evaluation)**
+3. **ServerA (AI Evaluation)**
 
-   - Simulated AI service for lead qualification
-   - Evaluates leads based on criteria
+   - Lead qualification service
+   - Evaluates leads based on specific criteria:
+     - Full name validation (first and last name required)
+     - Email format validation
+     - Phone number validation (minimum 10 digits)
+     - Company name validation (minimum 3 characters)
    - Provides both queue and HTTP-based interfaces
 
-3. **ServerY (CMS)**
+4. **ServerY (CMS)**
    - Manages qualified lead storage
    - Provides lead retrieval and management
    - Implements in-memory storage (for demo purposes)
+   - Queue-based storage with HTTP fallback
 
 ## Key Features
 
@@ -33,6 +47,33 @@ The system consists of three microservices:
 - Detailed logging
 - CORS support
 - Swagger API documentation
+- Direct Exchange pattern for RabbitMQ
+- Deterministic lead evaluation logic
+
+## Lead Evaluation Criteria
+
+The system evaluates leads based on the following criteria:
+
+1. **Full Name**
+
+   - Must contain at least two words (first and last name)
+   - Example: "John Smith" (valid), "John" (invalid)
+
+2. **Email**
+
+   - Must be in valid email format
+   - Must contain '@' and '.'
+   - Example: "<john.smith@company.com>" (valid), "invalid-email" (invalid)
+
+3. **Phone Number**
+
+   - Must contain at least 10 digits
+   - Non-digit characters are ignored
+   - Example: "+1 (555) 123-4567" (valid), "123" (invalid)
+
+4. **Company Name**
+   - Must be at least 3 characters long
+   - Example: "ACME Corp" (valid), "AB" (invalid)
 
 ## Risk Analysis & Mitigation
 
@@ -76,21 +117,56 @@ The system consists of three microservices:
 
 1. **Prerequisites**
 
-   - .NET 7.0 or later
-   - RabbitMQ server
+   - .NET 9.0 or later
+   - Node.js 22 or later
+   - Docker and Docker Compose
    - Visual Studio 2022 or VS Code
 
 2. **RabbitMQ Setup**
 
-   ```bash
-   # Install RabbitMQ (Windows)
-   choco install rabbitmq
+   Create a `docker-compose.yml` file in the root directory:
 
-   # Or using Docker
-   docker run -d --hostname my-rabbit --name my-rabbit -p 5672:5672 -p 15672:15672 rabbitmq:management
+   ```yaml
+   services:
+     rabbitmq:
+       image: rabbitmq:3-management
+       container_name: rabbitmq
+       hostname: rabbitmq
+       ports:
+         - "5672:5672" # AMQP protocol port
+         - "15672:15672" # Management UI port
+       environment:
+         - RABBITMQ_DEFAULT_USER=guest
+         - RABBITMQ_DEFAULT_PASS=guest
+       volumes:
+         - rabbitmq_data:/var/lib/rabbitmq
+       networks:
+         - lead-network
+
+   networks:
+     lead-network:
+       driver: bridge
+
+   volumes:
+     rabbitmq_data:
    ```
 
-3. **Project Setup**
+   Then run:
+
+   ```bash
+   # Start RabbitMQ
+   docker-compose up -d
+
+   # Check RabbitMQ status
+   docker-compose ps
+
+   # Access RabbitMQ management UI at:
+   # http://localhost:15672
+   # username: guest
+   # password: guest
+   ```
+
+3. **Backend Setup**
 
    ```bash
    # Clone repository
@@ -101,14 +177,27 @@ The system consists of three microservices:
    dotnet build
 
    # Run services (in separate terminals)
-   cd src/ServerX
+   cd backend/src/ServerX
    dotnet run
 
-   cd src/ServerA
+   cd backend/src/ServerA
    dotnet run
 
-   cd src/ServerY
+   cd backend/src/ServerY
    dotnet run
+   ```
+
+4. **Frontend Setup**
+
+   ```bash
+   # Navigate to frontend directory
+   cd frontend
+
+   # Install dependencies
+   npm install
+
+   # Start development server
+   npm run dev
    ```
 
 ## API Documentation
@@ -122,9 +211,9 @@ The system consists of three microservices:
    Content-Type: application/json
 
    {
-     "name": "John Doe",
+     "name": "John Smith",
      "email": "john@example.com",
-     "phone": "1234567890",
+     "phoneNumber": "1234567890",
      "companyName": "Example Corp"
    }
    ```
@@ -147,20 +236,21 @@ The system consists of three microservices:
 
 1. **Error Handling**
 
-   - Always use try-catch blocks in controllers
+   - Use try-catch blocks in controllers
    - Implement proper logging
    - Return appropriate HTTP status codes
 
 2. **Message Queue Usage**
 
-   - Use queues for primary communication
+   - Use Direct Exchange pattern
    - Implement HTTP fallback
    - Handle timeout scenarios
 
-3. **Testing**
-   - Unit tests (TODO)
-   - Integration tests (TODO)
-   - Load testing (TODO)
+3. **Frontend Development**
+   - Use TypeScript for type safety
+   - Implement proper form validation
+   - Provide user feedback for all actions
+   - Use proper error handling
 
 ## Future Improvements
 
