@@ -22,10 +22,13 @@ builder.Services.AddCors(options =>
 });
 
 // Add RabbitMQ Message Broker as Singleton
-var messageBroker = new MessageBroker(
-    builder.Configuration["RabbitMQ:HostName"] ?? "localhost",
-    builder.Services.BuildServiceProvider().GetRequiredService<ILogger<MessageBroker>>());
-builder.Services.AddSingleton<IMessageBroker>(messageBroker);
+builder.Services.AddSingleton<IMessageBroker>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<MessageBroker>>();
+    return new MessageBroker(
+        builder.Configuration["RabbitMQ:HostName"] ?? "localhost",
+        logger);
+});
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
