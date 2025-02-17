@@ -25,6 +25,7 @@ public class LeadsController : ControllerBase
         _messageBroker = messageBroker;
     }
 
+    [NonAction]
     public async Task HandleLeadStorage(Lead lead)
     {
         try

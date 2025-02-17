@@ -23,6 +23,7 @@ public class LeadsController : ControllerBase
         _messageBroker = messageBroker;
     }
 
+    [NonAction]
     public async Task HandleLeadEvaluation(Lead lead)
     {
         try
