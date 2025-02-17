@@ -43,7 +43,12 @@ builder.Services.AddHostedService<QueueInitializationService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "ServerA API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "ServerA API",
+        Version = "v1",
+        Description = "AI Evaluation Service API for Lead Management System"
+    });
 });
 
 var app = builder.Build();

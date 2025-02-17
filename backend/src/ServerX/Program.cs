@@ -33,7 +33,15 @@ builder.Services.AddSingleton<IMessageBroker>(sp =>
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "ServerX API",
+        Version = "v1",
+        Description = "Main API Gateway for Lead Management System"
+    });
+});
 
 // Configure HTTP clients first
 builder.Services.AddHttpClient("ServerA", client =>
