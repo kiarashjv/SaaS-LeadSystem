@@ -1,6 +1,7 @@
 using Microsoft.OpenApi.Models;
 using Serilog;
 using ServerX.Services;
+using SharedMessaging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +19,10 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader();
     });
 });
+
+// Add RabbitMQ Message Broker
+builder.Services.AddSingleton<IMessageBroker>(sp =>
+    new MessageBroker("localhost", sp.GetRequiredService<ILogger<MessageBroker>>()));
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
