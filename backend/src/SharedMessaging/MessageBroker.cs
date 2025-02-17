@@ -19,18 +19,30 @@ public class MessageBroker : IMessageBroker
     private readonly IModel _channel;
     private readonly ILogger<MessageBroker> _logger;
     private readonly Dictionary<string, IModel> _consumerChannels;
+    private const string EXCHANGE_NAME = "lead_system_exchange";
 
     public MessageBroker(string hostName, ILogger<MessageBroker> logger)
     {
         _logger = logger;
         _consumerChannels = new Dictionary<string, IModel>();
 
-        var factory = new ConnectionFactory { HostName = hostName };
+        var factory = new ConnectionFactory
+        {
+            HostName = hostName,
+            Port = 5672,
+            UserName = "guest",
+            Password = "guest",
+            DispatchConsumersAsync = true
+        };
 
         try
         {
             _connection = factory.CreateConnection();
             _channel = _connection.CreateModel();
+
+            // Declare the exchange
+            _channel.ExchangeDeclare(EXCHANGE_NAME, ExchangeType.Direct, durable: true);
+
             _logger.LogInformation("Successfully connected to RabbitMQ");
         }
         catch (Exception ex)
@@ -40,11 +52,32 @@ public class MessageBroker : IMessageBroker
         }
     }
 
+    private void DeclareQueue(IModel channel, string queue)
+    {
+        try
+        {
+            channel.QueueDeclare(
+                queue: queue,
+                durable: true,
+                exclusive: false,
+                autoDelete: false,
+                arguments: null);
+
+            // Bind the queue to the exchange
+            channel.QueueBind(queue, EXCHANGE_NAME, queue);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to declare queue: {Queue}", queue);
+            throw;
+        }
+    }
+
     public void PublishMessage<T>(string queue, T message)
     {
         try
         {
-            _channel.QueueDeclare(queue, durable: true, exclusive: false, autoDelete: false);
+            DeclareQueue(_channel, queue);
 
             var json = JsonSerializer.Serialize(message);
             var body = Encoding.UTF8.GetBytes(json);
@@ -53,12 +86,13 @@ public class MessageBroker : IMessageBroker
             properties.Persistent = true;
 
             _channel.BasicPublish(
-                exchange: "",
+                exchange: EXCHANGE_NAME,
                 routingKey: queue,
                 basicProperties: properties,
                 body: body);
 
-            _logger.LogInformation("Published message to queue: {Queue}", queue);
+            _logger.LogInformation("Published message to queue: {Queue} with content: {Content}",
+                queue, json);
         }
         catch (Exception ex)
         {
@@ -74,14 +108,16 @@ public class MessageBroker : IMessageBroker
             var channel = _connection.CreateModel();
             _consumerChannels[queue] = channel;
 
-            channel.QueueDeclare(queue, durable: true, exclusive: false, autoDelete: false);
+            DeclareQueue(channel, queue);
+
             channel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
 
-            var consumer = new EventingBasicConsumer(channel);
+            var consumer = new AsyncEventingBasicConsumer(channel);
             consumer.Received += async (model, ea) =>
             {
                 var body = ea.Body.ToArray();
                 var json = Encoding.UTF8.GetString(body);
+                _logger.LogDebug("Received message from queue {Queue}: {Json}", queue, json);
 
                 try
                 {

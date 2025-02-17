@@ -12,7 +12,8 @@ public class LeadsController : ControllerBase
     private readonly ILeadStorageService _storageService;
     private readonly ILogger<LeadsController> _logger;
     private readonly IMessageBroker _messageBroker;
-    private const string STORAGE_QUEUE = "lead-storage-queue";
+    private const string STORAGE_REQUEST_QUEUE = "lead-storage-queue";
+    private const string STORAGE_RESPONSE_QUEUE = "lead-storage-queue-result";
 
     public LeadsController(
         ILeadStorageService storageService,
@@ -22,12 +23,9 @@ public class LeadsController : ControllerBase
         _storageService = storageService;
         _logger = logger;
         _messageBroker = messageBroker;
-
-        // Subscribe to incoming leads
-        _messageBroker.Subscribe<Lead>(STORAGE_QUEUE, HandleLeadStorage);
     }
 
-    private async Task HandleLeadStorage(Lead lead)
+    public async Task HandleLeadStorage(Lead lead)
     {
         try
         {
@@ -35,9 +33,8 @@ public class LeadsController : ControllerBase
             var storedLead = await _storageService.StoreLead(lead);
 
             // Publish storage result back to queue
-            _messageBroker.PublishMessage(STORAGE_QUEUE + "-result", storedLead);
-
-            _logger.LogInformation("Lead stored successfully: {Email}", lead.Email);
+            _messageBroker.PublishMessage(STORAGE_RESPONSE_QUEUE, storedLead);
+            _logger.LogInformation("Lead storage result published for: {Email}", lead.Email);
         }
         catch (Exception ex)
         {

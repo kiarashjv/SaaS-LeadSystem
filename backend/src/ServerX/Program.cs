@@ -20,9 +20,11 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Add RabbitMQ Message Broker
-builder.Services.AddSingleton<IMessageBroker>(sp =>
-    new MessageBroker("localhost", sp.GetRequiredService<ILogger<MessageBroker>>()));
+// Add RabbitMQ Message Broker as Singleton
+var messageBroker = new MessageBroker(
+    builder.Configuration["RabbitMQ:HostName"] ?? "localhost",
+    builder.Services.BuildServiceProvider().GetRequiredService<ILogger<MessageBroker>>());
+builder.Services.AddSingleton<IMessageBroker>(messageBroker);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -30,19 +32,34 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Configure HTTP client for ServerA
-builder.Services.AddHttpClient<ILeadEvaluationService, LeadEvaluationService>(client =>
+// Configure HTTP clients first
+builder.Services.AddHttpClient("ServerA", client =>
 {
-    // ServerA
     client.BaseAddress = new Uri("http://localhost:5007");
 });
 
-// Configure HTTP client for ServerY
-builder.Services.AddHttpClient<ICmsService, CmsService>(client =>
+builder.Services.AddHttpClient("ServerY", client =>
 {
-    // ServerY
     client.BaseAddress = new Uri("http://localhost:5008");
 });
+
+// Add services with proper dependencies
+builder.Services.AddSingleton<ILeadEvaluationService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<LeadEvaluationService>>();
+    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("ServerA");
+    return new LeadEvaluationService(httpClient, logger, messageBroker);
+});
+
+builder.Services.AddSingleton<ICmsService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<CmsService>>();
+    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("ServerY");
+    return new CmsService(httpClient, logger, messageBroker);
+});
+
+// Add QueueInitializationService last
+builder.Services.AddHostedService<QueueInitializationService>();
 
 var app = builder.Build();
 

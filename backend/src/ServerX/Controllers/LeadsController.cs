@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using ServerX.Services;
+using SharedMessaging;
 using SharedModels;
 
 namespace ServerX.Controllers;
@@ -11,12 +12,18 @@ public class LeadsController : ControllerBase
     private readonly ILeadEvaluationService _evaluationService;
     private readonly ICmsService _cmsService;
     private readonly ILogger<LeadsController> _logger;
+    private readonly IMessageBroker _messageBroker;
 
-    public LeadsController(ILeadEvaluationService evaluationService, ICmsService cmsService, ILogger<LeadsController> logger)
+    public LeadsController(
+        ILeadEvaluationService evaluationService,
+        ICmsService cmsService,
+        ILogger<LeadsController> logger,
+        IMessageBroker messageBroker)
     {
         _evaluationService = evaluationService;
         _cmsService = cmsService;
         _logger = logger;
+        _messageBroker = messageBroker;
     }
 
     [HttpPost("evaluate")]
@@ -38,23 +45,16 @@ public class LeadsController : ControllerBase
             if (evaluation.IsQualified)
             {
                 _logger.LogInformation("Lead {Email} is qualified, storing in CMS", lead.Email);
-                await _cmsService.StoreQualifiedLeadAsync(lead);
+                await _cmsService.StoreQualifiedLeadAsync(evaluation.Lead);
             }
 
             return Ok(evaluation);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error evaluating lead for {Email}", lead.Email);
+            _logger.LogError(ex, "Error processing lead: {Email}", lead.Email);
             return StatusCode(500, "An error occurred while processing your request");
         }
-    }
-
-    // Test endpoint
-    [HttpGet("test")]
-    public IActionResult Test()
-    {
-        return Ok(new { Status = "ServerX is running!" });
     }
 }
 
